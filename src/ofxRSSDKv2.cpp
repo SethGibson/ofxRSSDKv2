@@ -134,6 +134,7 @@ namespace ofxRSSDK
 					return false;
 				}
 				mRgbFrame.setFromExternalPixels(reinterpret_cast<uint8_t *>(cColorData.planes[0]), mRgbSize.x, mRgbSize.y,4);
+				mRgbFrame.swapRgb();
 
 				cColorImage->ReleaseAccess(&cColorData);
 				if (!mHasDepth)
@@ -385,7 +386,11 @@ namespace ofxRSSDK
 			mOutPoints2D.resize(2);
 			mCoordinateMapper->ProjectCameraToColor(1, &mInPoints3D[0], &mOutPoints2D[0]);
 
-			return mRgbFrame.getColor(static_cast<int>(mOutPoints2D[0].x), static_cast<int>(mOutPoints2D[0].y));
+			int imageX = static_cast<int>(mOutPoints2D[0].x);
+			int imageY = static_cast<int>(mOutPoints2D[0].y);
+			if( (imageX>=0&&imageX<mRgbSize.x)  &&(imageY>=0&&imageY<mRgbSize.y))
+				return mRgbFrame.getColor(imageX, imageY);
+			return ofColor::black;
 		}
 		return ofColor::black;
 	}

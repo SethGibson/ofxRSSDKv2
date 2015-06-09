@@ -25,7 +25,7 @@ void ofApp::setup()
 void ofApp::update()
 {
 	mRSSDK->update();
-	mTexRgb.loadData(mRSSDK->getRgbFrame(), GL_BGRA);
+	mTexRgb.loadData(mRSSDK->getRgbFrame());
 	mTexDepth.loadData(mRSSDK->getDepth8uFrame());
 }
 
