@@ -29,12 +29,7 @@ private:
 	void setupCamera();
 	
 	RSDevicePtr mRSSDK;	
-	int mWidth,
-		mHeight;
-
-	ofShortPixels	mDepthPixels;
 	ofMesh			mCloudMesh;
-	
 	ofEasyCam		mCamera;
 };
 

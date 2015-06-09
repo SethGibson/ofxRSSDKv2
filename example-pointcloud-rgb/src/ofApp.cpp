@@ -16,13 +16,7 @@ void ofApp::setup()
 	mRSSDK->enablePointCloud(CloudRes::FULL_RES);
 	mRSSDK->setPointCloudRange(100.0f,1000.0f);
 
-
 	mRSSDK->start();
-	mWidth = mRSSDK->getDepthWidth();
-	mHeight = mRSSDK->getDepthHeight();
-	
-	mDepthPixels.allocate(mWidth,mHeight,1);
-	
 	setupCamera();
 }
 
@@ -35,13 +29,13 @@ void ofApp::update()
 	mCloudMesh.setMode(OF_PRIMITIVE_POINTS);
 	mCloudMesh.enableColors();
 
+	//TODO: Figure out a better way to work with BGRA pixels
 	vector<ofVec3f> pointCloud = mRSSDK->getPointCloud();
-	
 	for(vector<ofVec3f>::iterator p=pointCloud.begin();p!=pointCloud.end();++p)
 	{
 		mCloudMesh.addVertex(*p);
 		ofColor c = mRSSDK->getColorFromDepthSpace(*p);
-		mCloudMesh.addColor(c);
+		mCloudMesh.addColor(ofColor(c.b,c.g,c.r));
 	}
 }
 

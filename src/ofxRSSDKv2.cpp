@@ -134,7 +134,6 @@ namespace ofxRSSDK
 					return false;
 				}
 				mRgbFrame.setFromExternalPixels(reinterpret_cast<uint8_t *>(cColorData.planes[0]), mRgbSize.x, mRgbSize.y,4);
-				mRgbFrame.swapRgb();
 
 				cColorImage->ReleaseAccess(&cColorData);
 				if (!mHasDepth)
