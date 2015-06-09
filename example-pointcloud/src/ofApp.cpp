@@ -11,7 +11,12 @@ void ofApp::setup()
 		exit();
 	}
 
+	mRSSDK->initRgb(RGBRes::VGA,30);
 	mRSSDK->initDepth(DepthRes::R200_SD, 30, false);
+	mRSSDK->enablePointCloud(CloudRes::Q_RES);
+	mRSSDK->setPointCloudRange(100.0f,1000.0f);
+
+
 	mRSSDK->start();
 	mWidth = mRSSDK->getDepthWidth();
 	mHeight = mRSSDK->getDepthHeight();
@@ -26,20 +31,17 @@ void ofApp::update()
 {
 	mRSSDK->update();
 	
-	const uint16_t *mDepth = mRSSDK->getDepthFrame().getPixels();
 	mCloudMesh.clear();
 	mCloudMesh.setMode(OF_PRIMITIVE_POINTS);
 	mCloudMesh.enableColors();
 
-	for (int dy=0;dy<mHeight;++dy)
+	vector<ofVec3f> pointCloud = mRSSDK->getPointCloud();
+	
+	//for(auto p=begin(pointCloud);p!=end(pointCloud);++p)
+	for(vector<ofVec3f>::iterator p=pointCloud.begin();p!=pointCloud.end();++p)
 	{
-		for (int dx=0;dx<mWidth;++dx)
-		{
-			float v = (float)mDepth[dy*mWidth+dx];
-			ofPoint worldPos = mRSSDK->getDepthSpacePoint((float)dx,(float)dy,v);
-			mCloudMesh.addVertex(worldPos);
-			mCloudMesh.addColor(ofColor::white);
-		}
+		mCloudMesh.addVertex(*p);
+		mCloudMesh.addColor(ofColor::white);
 	}
 }
 

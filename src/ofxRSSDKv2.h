@@ -39,6 +39,13 @@ namespace ofxRSSDK
 		ALIGN_UVS_ONLY
 	};
 
+	enum CloudRes
+	{
+		FULL_RES=1,
+		HALF_RES=2,
+		Q_RES=4
+	};
+
 	class RSDevice
 	{
 	protected:
@@ -50,7 +57,10 @@ namespace ofxRSSDK
 		bool init();
 		bool initRgb(const RGBRes& pSize, const float& pFPS);
 		bool initDepth(const DepthRes& pSize, const float& pFPS, bool pAsColor);
+		
 		void enableAlignedImages(bool pState = true, AlignMode pMode = AlignMode::ALIGN_UVS_ONLY) { mShouldAlign = pState; mAlignMode = pMode; }
+		void enablePointCloud(CloudRes pCloudRes) { mCloudRes=pCloudRes; mShouldGetPointCloud=true;}
+		void setPointCloudRange(float pMin, float pMax);
 
 		bool start();
 		bool update();
@@ -61,6 +71,7 @@ namespace ofxRSSDK
 		const ofPixels&	getDepth8uFrame();
 		const ofPixels&	getColorMappedToDepthFrame();
 		const ofPixels&	getDepthMappedToColorFrame();
+		vector<ofVec3f> getPointCloud();
 		//Nomenclature Notes:
 		//	"Space" denotes a 3d coordinate
 		//	"Image" denotes an image space point ((0, width), (0,height), (image depth))
@@ -99,15 +110,20 @@ namespace ofxRSSDK
 		const int		getRgbHeight() { return mRgbSize.y; }
 
 	private:
+		void			updatePointCloud();
+
 		bool			mIsInit,
 						mIsRunning,
 						mHasRgb,
 						mHasDepth,
 						mShouldAlign,
-						mShouldGetDepthAsColor;
+						mShouldGetDepthAsColor,
+						mShouldGetPointCloud;
 
 		AlignMode		mAlignMode;
+		CloudRes		mCloudRes;
 
+		ofVec2f			mPointCloudRange;
 		ofVec2f			mDepthSize;
 		ofVec2f			mRgbSize;
 		ofPixels		mRgbFrame;
@@ -123,7 +139,8 @@ namespace ofxRSSDK
 		vector<PXCPoint3DF32>	mInPoints3D;
 		vector<PXCPoint3DF32>	mOutPoints3D;
 		vector<PXCPointF32>		mOutPoints2D;
-
+		vector<ofVec3f>			mPointCloud;
+		uint16_t				*mRawDepth;
 	};
 };
 #endif

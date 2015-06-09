@@ -13,6 +13,9 @@ namespace ofxRSSDK
 		mHasDepth = false;
 		mShouldAlign = false;
 		mShouldGetDepthAsColor = false;
+		mShouldGetPointCloud = false;
+		mPointCloudRange = ofVec2f(0,3000);
+		mCloudRes = CloudRes::FULL_RES;
 	}
 
 	bool RSDevice::init()
@@ -52,7 +55,7 @@ namespace ofxRSSDK
 		return mHasRgb;
 	}
 
-	bool RSDevice::initDepth(const DepthRes& pSize, const float& pFPS, bool pAsColor = false)
+	bool RSDevice::initDepth(const DepthRes& pSize, const float& pFPS, bool pAsColor)
 	{
 		pxcStatus cStatus;
 		if (mSenseMgr)
@@ -79,9 +82,15 @@ namespace ofxRSSDK
 				mShouldGetDepthAsColor = pAsColor;
 				mDepthFrame.allocate(mDepthSize.x, mDepthSize.y,1);
 				mDepth8uFrame.allocate(mDepthSize.x, mDepthSize.y, ofPixelFormat::OF_PIXELS_RGBA);
+				mRawDepth = new uint16_t[(int)mDepthSize.x*(int)mDepthSize.y];
 			}
 		}
 		return mHasDepth;
+	}
+
+	void RSDevice::setPointCloudRange(float pMin=100.0f, float pMax=1500.0f)
+	{
+		mPointCloudRange = ofVec2f(pMin,pMax);
 	}
 
 	bool RSDevice::start()
@@ -106,7 +115,7 @@ namespace ofxRSSDK
 		pxcStatus cStatus;
 		if (mSenseMgr)
 		{
-			cStatus = mSenseMgr->AcquireFrame();
+			cStatus = mSenseMgr->AcquireFrame(false,0);
 			if (cStatus < PXC_STATUS_NO_ERROR)
 				return false;
 			PXCCapture::Sample *mCurrentSample = mSenseMgr->QuerySample();
@@ -140,13 +149,14 @@ namespace ofxRSSDK
 				PXCImage *cDepthImage = mCurrentSample->depth;
 				PXCImage::ImageData cDepthData;
 				cStatus = cDepthImage->AcquireAccess(PXCImage::ACCESS_READ, PXCImage::PIXEL_FORMAT_DEPTH, &cDepthData);
+				
 				if (cStatus < PXC_STATUS_NO_ERROR)
 				{
 					cDepthImage->ReleaseAccess(&cDepthData);
 					return false;
 				}
 				mDepthFrame.setFromExternalPixels(reinterpret_cast<uint16_t *>(cDepthData.planes[0]), mDepthSize.x, mDepthSize.y, 1);
-			
+				memcpy(mRawDepth, reinterpret_cast<uint16_t *>(cDepthData.planes[0]), (size_t)((int)mDepthSize.x*(int)mDepthSize.y*sizeof(uint16_t)));			
 				cDepthImage->ReleaseAccess(&cDepthData);
 
 				if (mShouldGetDepthAsColor)
@@ -160,6 +170,11 @@ namespace ofxRSSDK
 					}
 					mDepth8uFrame.setFromExternalPixels(reinterpret_cast<uint8_t *>(cDepth8uData.planes[0]), mDepthSize.x, mDepthSize.y, 4);
 					cDepthImage->ReleaseAccess(&cDepth8uData);
+				}
+
+				if(mShouldGetPointCloud)
+				{
+					updatePointCloud();
 				}
 
 				if (!mHasRgb)
@@ -208,6 +223,34 @@ namespace ofxRSSDK
 		return false;
 	}
 
+	void RSDevice::updatePointCloud()
+	{
+		int width = (int)mDepthSize.x;
+		int height = (int)mDepthSize.y;
+		int step = (int)mCloudRes;
+		mPointCloud.clear();
+		vector<PXCPoint3DF32> depthPoints, worldPoints;
+		for (int dy = 0; dy < height;dy+=step)
+		{
+			for (int dx = 0; dx < width; dx+=step)
+			{
+				PXCPoint3DF32 cPoint;
+				cPoint.x = dx; cPoint.y = dy; cPoint.z = (float)mRawDepth[dy*width + dx];
+				if(cPoint.z>mPointCloudRange.x&&cPoint.z<mPointCloudRange.y)
+					depthPoints.push_back(cPoint);
+			}
+		}
+
+		worldPoints.resize(depthPoints.size());
+		mCoordinateMapper->ProjectDepthToCamera(depthPoints.size(), &depthPoints[0], &worldPoints[0]);
+
+		for (int i = 0; i < depthPoints.size();++i)
+		{
+			PXCPoint3DF32 p = worldPoints[i];
+			mPointCloud.push_back(ofVec3f(p.x, p.y, p.z));
+		}
+	}
+
 	bool RSDevice::stop()
 	{
 		if (mSenseMgr)
@@ -216,6 +259,7 @@ namespace ofxRSSDK
 			mSenseMgr->Close();
 			return true;
 		}
+		delete [] mRawDepth;
 		return false;
 	}
 
@@ -242,6 +286,11 @@ namespace ofxRSSDK
 	const ofPixels& RSDevice::getDepthMappedToColorFrame()
 	{
 		return mDepthToColorFrame;
+	}
+
+	vector<ofVec3f> RSDevice::getPointCloud()
+	{
+		return mPointCloud;
 	}
 
 	//Nomenclature Notes:
