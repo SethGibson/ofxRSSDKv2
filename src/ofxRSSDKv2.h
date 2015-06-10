@@ -9,6 +9,9 @@
 #include "ofMain.h"
 #include "pxcsensemanager.h"
 #include "pxcprojection.h"
+#include "pxcblobmodule.h"
+#include "pxcfacemodule.h"
+#include "pxcfaceconfiguration.h"
 
 using namespace std;
 
@@ -59,7 +62,10 @@ namespace ofxRSSDK
 		bool initDepth(const DepthRes& pSize, const float& pFPS, bool pAsColor);
 		
 		void enableAlignedImages(bool pState = true, AlignMode pMode = AlignMode::ALIGN_UVS_ONLY) { mShouldAlign = pState; mAlignMode = pMode; }
-		void enablePointCloud(CloudRes pCloudRes) { mCloudRes=pCloudRes; mShouldGetPointCloud=true;}
+		void enablePointCloud(CloudRes pCloudRes, float pMinDepth, float pMaxDepth) { mCloudRes=pCloudRes; mShouldGetPointCloud=true; mPointCloudRange = ofVec2f(pMinDepth,pMaxDepth);}
+		bool enableFaceTracking(bool pUseDepth);
+		bool enableBlobTracking();
+
 		void setPointCloudRange(float pMin, float pMax);
 
 		bool start();
@@ -111,6 +117,8 @@ namespace ofxRSSDK
 
 	private:
 		void			updatePointCloud();
+		void			updateFaces();
+		void			updateBlobs();
 
 		bool			mIsInit,
 						mIsRunning,
@@ -118,7 +126,9 @@ namespace ofxRSSDK
 						mHasDepth,
 						mShouldAlign,
 						mShouldGetDepthAsColor,
-						mShouldGetPointCloud;
+						mShouldGetPointCloud,
+						mShouldGetFaces,
+						mShouldGetBlobs;
 
 		AlignMode		mAlignMode;
 		CloudRes		mCloudRes;
@@ -135,6 +145,9 @@ namespace ofxRSSDK
 		PXCSenseManager		*mSenseMgr;
 		PXCProjection		*mCoordinateMapper;
 		PXCCapture::Sample	*mCurrentSample;
+
+		PXCBlobModule		*mBlobTracker;
+		PXCFaceModule		*mFaceTracker;
 
 		vector<PXCPoint3DF32>	mInPoints3D;
 		vector<PXCPoint3DF32>	mOutPoints3D;

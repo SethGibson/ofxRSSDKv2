@@ -14,10 +14,13 @@ namespace ofxRSSDK
 		mShouldAlign = false;
 		mShouldGetDepthAsColor = false;
 		mShouldGetPointCloud = false;
+		mShouldGetFaces = false;
+		mShouldGetBlobs = false;
 		mPointCloudRange = ofVec2f(0,3000);
 		mCloudRes = CloudRes::FULL_RES;
 	}
 
+#pragma region Init
 	bool RSDevice::init()
 	{
 		mSenseMgr = PXCSenseManager::CreateInstance();
@@ -87,6 +90,7 @@ namespace ofxRSSDK
 		}
 		return mHasDepth;
 	}
+#pragma endregion
 
 	void RSDevice::setPointCloudRange(float pMin=100.0f, float pMax=1500.0f)
 	{
@@ -223,6 +227,82 @@ namespace ofxRSSDK
 		return false;
 	}
 
+	bool RSDevice::stop()
+	{
+		if (mSenseMgr)
+		{
+			mCoordinateMapper->Release();
+			mSenseMgr->Close();
+			if(mShouldGetBlobs)
+			{
+				if(mBlobTracker)
+					mBlobTracker->Release();
+			}
+			if(mShouldGetFaces)
+			{
+				if(mFaceTracker)
+					mFaceTracker->Release();
+			}
+			return true;
+		}
+		delete [] mRawDepth;
+		return false;
+	}
+
+#pragma region Enable
+		bool RSDevice::enableFaceTracking(bool pUseDepth)
+		{
+			if(mSenseMgr)
+			{
+				if(mSenseMgr->EnableFace()>=PXC_STATUS_NO_ERROR)
+				{
+					mFaceTracker = mSenseMgr->QueryFace();
+					if(mFaceTracker)
+					{
+						PXCFaceConfiguration *config = mFaceTracker->CreateActiveConfiguration();
+						switch(pUseDepth)
+						{
+						case true:
+							config->SetTrackingMode(PXCFaceConfiguration::TrackingModeType::FACE_MODE_COLOR_PLUS_DEPTH);
+							break;
+						case false:
+							config->SetTrackingMode(PXCFaceConfiguration::TrackingModeType::FACE_MODE_COLOR);
+							break;
+						}
+						config->ApplyChanges();
+						config->Release();
+						mShouldGetFaces = true;
+					}
+					else
+						mShouldGetFaces = false;
+					return mShouldGetFaces;
+				}
+				return false;
+			}
+			return false;
+		}
+
+		bool RSDevice::enableBlobTracking()
+		{
+			if(mSenseMgr)
+			{
+				if(mSenseMgr->EnableBlob()>=PXC_STATUS_NO_ERROR)
+				{
+					mBlobTracker = mSenseMgr->QueryBlob();
+					if(mBlobTracker)
+						mShouldGetBlobs = true;
+					else
+						mShouldGetBlobs = false;
+					return mShouldGetBlobs;
+				}
+				return false;
+			}
+			return false;
+
+		}
+#pragma endregion
+
+#pragma region Update
 	void RSDevice::updatePointCloud()
 	{
 		int width = (int)mDepthSize.x;
@@ -250,19 +330,9 @@ namespace ofxRSSDK
 			mPointCloud.push_back(ofVec3f(p.x, p.y, p.z));
 		}
 	}
+#pragma endregion
 
-	bool RSDevice::stop()
-	{
-		if (mSenseMgr)
-		{
-			mCoordinateMapper->Release();
-			mSenseMgr->Close();
-			return true;
-		}
-		delete [] mRawDepth;
-		return false;
-	}
-
+#pragma region Getters
 	const ofPixels& RSDevice::getRgbFrame()
 	{
 		return mRgbFrame;
@@ -462,3 +532,4 @@ namespace ofxRSSDK
 		return getColorCoordsFromDepthSpace(pCameraPoint.x, pCameraPoint.y, pCameraPoint.z);
 	}
 }
+#pragma endregion
